@@ -1,31 +1,35 @@
 #include "menu.h"
 #include "../globals.h"
-
+#include "../DB_Handler/db_handler.h"
 #include <imgui/imgui_internal.h>
 #include <imgui/bBlur.h>
+#include <imgui/imgui.h>
 
 #include <thread>
 #include <iostream>
 
-std::string key_input = "";
 static float rotation = 0.0f;
 static ImVec2 spinnerCenter(0.0f, 0.0f);
 static float spinnerRadius = 60.0f;
-static ImU32 backgroundColor = IM_COL32(0, 0, 0, 128);
-ImVec2 windowSize(400, 300);
-ImVec2 targetSize(200, 150);
-float animationDuration = 1.0f;   // Duration for the animation (in seconds)
-float animationStartTime = -1.0f; // Time at which the animation started (neg
-bool showWindow = true;
+static char contact_point[255] = "";
+
+db::db_handler *DbHandler = nullptr;
 
 bool IsInternetConnected();
-void TextCentered(std::string text, ImColor startColor, ImColor endColor, float add_x = 0, float add_y = 0, bool should_anim = false);
-void DrawCircularLoadingSpinner(float x_add = 0.f, float y_add = 0.f, float current_ticks = 0.f, float max_ticks = 0.f);
-int hello_world();
-static void RoundedRect(ImVec2 size, ImU32 color);
-void RoundedImage(ImTextureID user_texture_id, const ImVec2 &size, const ImVec2 &rounding, int border_thickness, const ImU32 &border_color, int image_opacity);
+bool check_db_connection();
 bool check_login_data(std::string username, std::string password);
 bool Spinner(const char *label, float radius, int thickness, const ImU32 &color);
+
+int hello_world();
+
+void connect_to_db();
+void TextCentered(std::string text, ImColor startColor, ImColor endColor, float add_x = 0, float add_y = 0, bool should_anim = false);
+void DrawCircularLoadingSpinner(float x_add = 0.f, float y_add = 0.f, float current_ticks = 0.f, float max_ticks = 0.f);
+static void RoundedRect(ImVec2 size, ImU32 color);
+void RoundedImage(ImTextureID user_texture_id, const ImVec2 &size, const ImVec2 &rounding, int border_thickness, const ImU32 &border_color, int image_opacity);
+void clear_screen();
+void connect_page(int &logo_add, int &logo_pos, int *screenW, ImGuiStyle *style, bool *good_contact);
+void main_page(int *logo_add, int *logo_pos, int *screenW, ImGuiStyle *style, bool *good_login, int *login_missmatches);
 
 namespace gui
 {
@@ -35,6 +39,16 @@ namespace gui
         // its a ghetto method but idc tbh, also needs admin rights
         int result = system("ping -c 1 google.com");
         return result == 0;
+    }
+
+    void connect_to_db(const std::string &contact_point)
+    {
+        DbHandler = new db::db_handler(contact_point.c_str());
+    }
+
+    bool check_db_connection()
+    {
+        return DbHandler->check_db_contact_point();
     }
 
     void TextCentered(std::string text, ImColor startColor, ImColor endColor, float add_x = 0, float add_y = 0, bool should_anim = false)
@@ -112,7 +126,6 @@ namespace gui
             def_alpha--;
 
         // Draw a semi-transparent background circle
-        // drawList->AddCircleFilled(spinnerCenter, spinnerRadius + 2.0f, backgroundColor, 32);
 
         // Draw the rotating circular loading spinner as dots
         const int numDots = 12; // Number of dots in the spinner
@@ -174,15 +187,11 @@ namespace gui
         if (hovered)
         {
             // Handle hover effect
-            // You can add additional logic here, such as changing the border color or displaying a tooltip
-            std::cout << "Some item hovered" << std::endl;
         }
 
         if (pressed)
         {
             // Handle click event
-            // You can add custom logic for when the image is clicked
-            std::cout << "Some item pressed" << std::endl;
         }
     }
 
@@ -190,12 +199,10 @@ namespace gui
     {
         if (username == "admin" && password == "123")
         {
-            std::cout << "Good login" << std::endl;
             return true;
         }
         else
         {
-            std::cout << "Bad login" << std::endl;
             return false;
         }
     }
@@ -239,5 +246,77 @@ namespace gui
         }
 
         window->DrawList->PathStroke(color, false, thickness);
+    }
+
+    void connect_page(int &logo_add, int &logo_pos, int *screenW, ImGuiStyle *style, bool *good_contact)
+    {
+        static bool invalid_contact = true;
+        if (logo_add > -20)
+            logo_add -= 1;
+        else if (logo_pos < 40)
+            logo_pos += 6;
+
+        style->Colors[ImGuiCol_Text] = ImColor(171, 92, 255);
+        ImGui::SetCursorPos(ImVec2((*screenW / 2) - 80, logo_pos));
+        ImGui::PushFont(globals.logo_font);
+        ImGui::Text("POOFie");
+        ImGui::PopFont();
+        style->Colors[ImGuiCol_Text] = ImColor(255, 255, 255);
+        ImGui::SetCursorPos(ImVec2((*screenW / 2) + 2 - 80, logo_pos + 2));
+        ImGui::PushFont(globals.logo_font);
+        ImGui::Text("POOFie");
+        ImGui::PopFont();
+
+        style->Colors[ImGuiCol_Button] = ImColor(171, 92, 255);         // darkest
+        style->Colors[ImGuiCol_ButtonHovered] = ImColor(179, 114, 247); // light
+        style->Colors[ImGuiCol_ButtonActive] = ImColor(190, 136, 247);  // lighter
+        style->FrameRounding = 5.0f;
+
+        ImGui::SetCursorPos(ImVec2((*screenW / 2) - IM_ARRAYSIZE(globals.contact_point), 150));
+        ImGui::InputText("##", globals.contact_point, IM_ARRAYSIZE(globals.contact_point));
+
+        std::string contact_point = globals.contact_point;
+
+        ImGui::SetCursorPos(ImVec2(680, 151));
+        ImGui::Image(globals.username_icon, ImVec2(18, 18));
+
+        if (invalid_contact == false)
+        {
+            ImGui::PushFont(globals.verdana);
+            ImGui::SetCursorPos(ImVec2((*screenW / 2) - IM_ARRAYSIZE(globals.contact_point), 175));
+            ImGui::TextColored(ImVec4(1.0f, 0.f, 0.f, 1.f), "Invalid contact point!");
+            ImGui::PopFont();
+        }
+
+        ImGui::SetCursorPos(ImVec2((*screenW / 2) - 130, 270));
+        if (ImGui::Button("Login", ImVec2(267, 40)))
+        {
+            gui::connect_to_db(contact_point);
+            if (gui::check_db_connection())
+            {
+                *good_contact = true;
+                globals.login_loading = true;
+                globals.main_form = true;
+                globals.login_form = false;
+            }
+            else
+            {
+                invalid_contact = false;
+            }
+        }
+    }
+
+    void main_page(int &logo_add, int &logo_pos, int &screenW, ImGuiStyle *style, bool &good_login)
+    {
+        style->Colors[ImGuiCol_Text] = ImColor(171, 92, 255);
+        ImGui::SetCursorPos(ImVec2((screenW / 2) - 80, logo_pos));
+        ImGui::PushFont(globals.logo_font);
+        ImGui::Text("POOFie");
+        ImGui::PopFont();
+        style->Colors[ImGuiCol_Text] = ImColor(255, 255, 255);
+        ImGui::SetCursorPos(ImVec2((screenW / 2) + 2 - 80, logo_pos + 2));
+        ImGui::PushFont(globals.logo_font);
+        ImGui::Text("POOFie");
+        ImGui::PopFont();
     }
 }
