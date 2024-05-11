@@ -73,51 +73,12 @@ void menu::render(SDL_Window *window)
 
         if (globals.login_form && on_login_page && !globals.failed)
         {
-            if (logo_add > -20)
-                logo_add -= 1;
-            else if (logo_pos < 40)
-                logo_pos += 6;
-
-            style.Colors[ImGuiCol_Text] = ImColor(171, 92, 255);
-            ImGui::SetCursorPos(ImVec2((screenW / 2) - 80, logo_pos));
-            ImGui::PushFont(globals.logo_font);
-            ImGui::Text("POOFie");
-            ImGui::PopFont();
-            style.Colors[ImGuiCol_Text] = ImColor(255, 255, 255);
-            ImGui::SetCursorPos(ImVec2((screenW / 2) + 2 - 80, logo_pos + 2));
-            ImGui::PushFont(globals.logo_font);
-            ImGui::Text("POOFie");
-            ImGui::PopFont();
-
-            style.Colors[ImGuiCol_Button] = ImColor(171, 92, 255);
-            style.Colors[ImGuiCol_ButtonHovered] = ImColor(171, 92, 255);
-            style.Colors[ImGuiCol_ButtonActive] = ImColor(171, 92, 255);
-            style.FrameRounding = 5.0f;
-
-            ImGui::SetCursorPos(ImVec2((screenW / 2) - IM_ARRAYSIZE(globals.username), 150));
-            ImGui::InputText("##", globals.username, IM_ARRAYSIZE(globals.username));
-
-            std::string user_name = globals.username;
-
-            ImGui::SetCursorPos(ImVec2(680, 151));
-            ImGui::Image(globals.username_icon, ImVec2(18, 18));
-
-            ImGui::SetCursorPos(ImVec2((screenW / 2) - IM_ARRAYSIZE(globals.password), 210));
-            ImGui::InputText(" ", globals.password, IM_ARRAYSIZE(globals.password), ImGuiInputTextFlags_Password);
-
-            std::string pass_word = globals.password;
-
-            ImGui::SetCursorPos(ImVec2(680, 211));
-            ImGui::Image(globals.password_icon, ImVec2(18, 18));
-
-            ImGui::SetCursorPos(ImVec2((screenW / 2) - 130, 270));
-            if (ImGui::Button("Login", ImVec2(267, 40)))
-            {
-                if (gui::check_login_data(user_name, pass_word))
-                    good_login = true;
-                else
-                    login_missmatches++;
-            }
+            // gui::login_page(&logo_add, &logo_pos, &screenW, &style, &good_login, &login_missmatches);
+            gui::connect_page(logo_add, logo_pos, &screenW, &style, &good_login);
+        }
+        else if (globals.login_loading && !globals.failed)
+        {
+            gui::main_page(logo_add, logo_pos, screenW, &style, good_login);
         }
     }
     ImGui::End();

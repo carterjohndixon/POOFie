@@ -23,6 +23,7 @@ public:
     bool active = true;
     char username[255] = "";
     char password[255] = "";
+    char contact_point[255] = "";
     bool login_form = true;
     bool login_loading = false;
     bool main_form = false;

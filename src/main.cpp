@@ -5,6 +5,7 @@
 #include <OpenGL/gl.h>
 #include <stb/stb_image.h>
 #include <SDL2/SDL.h>
+#include <SDL2_image/SDL_image.h>
 #include <stdio.h>
 // #if defined(IMGUI_IMPL_OPENGL_ES2)
 // #else
@@ -22,14 +23,9 @@
 static int WindowWidth = 800;
 static int WindowHeight = 600;
 
-GLuint oblivion_int = 0;
-GLuint username_int = 0;
-GLuint password_int = 0;
-GLuint cs2_int = 0;
+const char *cassandra_icon = "assets/cassandra.png";
 
 c_globals globals;
-
-#define MOUSE_GRAB_PADDING 10
 
 SDL_HitTestResult HitTestCallback(SDL_Window *window, const SDL_Point *point, void *data)
 {
@@ -80,6 +76,15 @@ int main(int, char **)
 
     SDL_Window *window = SDL_CreateWindow("ImGui Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowWidth, WindowHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI | ImGuiWindowFlags_NoResize);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+
+    SDL_Surface *cassandra_surface = IMG_Load(cassandra_icon);
+    if (!cassandra_surface)
+    {
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_SetWindowIcon(window, cassandra_surface);
 
     // Initialize ImGui with SDL2 and OpenGL3
     ImGui::CreateContext();
@@ -177,6 +182,7 @@ int main(int, char **)
     ImGui::DestroyContext();
 
     SDL_GL_DeleteContext(gl_context);
+    SDL_FreeSurface(cassandra_surface);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
