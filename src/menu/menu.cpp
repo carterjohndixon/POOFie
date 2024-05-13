@@ -1,14 +1,3 @@
-// #include "menu.h"
-// #include "../globals.h"
-
-// #include <imgui/imgui_internal.h>
-// #include <imgui/bBlur.h>
-
-// #include <thread>
-// #include <iostream>
-
-// std::string key_input = "";
-
 #include "helper.h"
 
 void menu::render(SDL_Window *window)
@@ -38,10 +27,7 @@ void menu::render(SDL_Window *window)
             if (243 > wait_1)
             {
 
-                ImColor startColor(108, 122, 137, 255);
-                ImColor endColor(25, 122, 224, 255);
-                gui::TextCentered("Checking for updates", startColor, endColor, -5, 90, true);
-                gui::Spinner("##loadingSpin", 60, 3, IM_COL32(108, 122, 137, 255));
+                gui::loading_window("Checking for updates");
             }
 
             if (wait_2 > 350)
@@ -71,10 +57,13 @@ void menu::render(SDL_Window *window)
                 exit(1337);
         }
 
-        if (globals.login_form && on_login_page && !globals.failed)
+        if (globals.login_form && on_login_page && !globals.failed && !globals.connecting_to_db)
         {
-            // gui::login_page(&logo_add, &logo_pos, &screenW, &style, &good_login, &login_missmatches);
             gui::connect_page(logo_add, logo_pos, &screenW, &style, &good_login);
+        }
+        else if (globals.connecting_to_db && !globals.login_loading && !globals.failed)
+        {
+            gui::loading_window("Connecting to Cassandra...");
         }
         else if (globals.login_loading && !globals.failed)
         {
@@ -82,4 +71,15 @@ void menu::render(SDL_Window *window)
         }
     }
     ImGui::End();
+}
+
+void menu::init()
+{
+    // gui::update_connection();
+    gui::init_style();
+}
+
+void menu::clean()
+{
+    gui::clean();
 }

@@ -11,6 +11,7 @@
 #endif
 
 #include <cstdint>
+#include <functional>
 
 namespace db
 {
@@ -20,7 +21,9 @@ namespace db
         db_handler(const char *contact_points);
         ~db_handler();
 
-        bool check_db_contact_point();
+        bool is_connected();
+
+        bool loading = false;
 
     private:
         CassCluster *cluster;
