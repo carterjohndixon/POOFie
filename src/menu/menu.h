@@ -10,7 +10,8 @@
 namespace menu
 {
     void render(SDL_Window *window);
-    void init(SDL_Window *window);
+    void init();
+    void clean();
 
     inline const char *window_title = "POOFie LOAD";
 

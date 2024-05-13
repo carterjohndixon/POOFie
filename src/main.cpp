@@ -74,7 +74,8 @@ int main(int, char **)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #endif
 
-    SDL_Window *window = SDL_CreateWindow("ImGui Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowWidth, WindowHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI | ImGuiWindowFlags_NoResize);
+    // SDL_Window *window = SDL_CreateWindow("Cassandra", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowWidth, WindowHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI | ImGuiWindowFlags_NoResize); // borderless
+    SDL_Window *window = SDL_CreateWindow("Cassandra", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowWidth, WindowHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | ImGuiWindowFlags_NoResize); // with border
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 
     SDL_Surface *cassandra_surface = IMG_Load(cassandra_icon);
@@ -95,25 +96,10 @@ int main(int, char **)
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    if (globals.oblivion_icon == nullptr)
-    {
-        GLuint textureID = LoadTextureFromFileInMemory(oblivion, 5292);
-        globals.oblivion_icon = (void *)(intptr_t)textureID;
-    }
-    if (globals.password_icon == nullptr)
-    {
-        GLuint textureID = LoadTextureFromFileInMemory(password, 13290);
-        globals.password_icon = (void *)(intptr_t)textureID;
-    }
     if (globals.username_icon == nullptr)
     {
         GLuint textureID = LoadTextureFromFileInMemory(user, 14903);
         globals.username_icon = (void *)(intptr_t)textureID;
-    }
-    if (globals.cs2_icon == nullptr)
-    {
-        GLuint textureID = LoadTextureFromFileInMemory(cs2, 64462);
-        globals.cs2_icon = (void *)(intptr_t)textureID;
     }
     if (globals.poof_logo == nullptr)
     {
@@ -121,17 +107,10 @@ int main(int, char **)
         globals.poof_logo = (void *)(intptr_t)textureID;
     }
 
-    // ImGui::StyleColorsDark();
-
-    ImGuiStyle &style = ImGui::GetStyle();
-    if (io.ConfigFlags)
-    {
-        style.WindowRounding = 0.0f;
-        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-    }
-
     globals.verdana = io.Fonts->AddFontFromFileTTF("../sdl-opengl/fonts/Verdana.ttf", 15);
     globals.logo_font = io.Fonts->AddFontFromFileTTF("../sdl-opengl/fonts/verdanab.ttf", 53);
+
+    menu::init();
 
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
@@ -177,6 +156,7 @@ int main(int, char **)
         SDL_GL_SwapWindow(window);
     }
 
+    menu::clean();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();

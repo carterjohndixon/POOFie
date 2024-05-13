@@ -6,6 +6,8 @@
 #include <imgui/imgui.h>
 
 #include <thread>
+#include <future>
+#include <chrono>
 #include <iostream>
 
 static float rotation = 0.0f;
@@ -17,7 +19,6 @@ db::db_handler *DbHandler = nullptr;
 
 bool IsInternetConnected();
 bool check_db_connection();
-bool check_login_data(std::string username, std::string password);
 bool Spinner(const char *label, float radius, int thickness, const ImU32 &color);
 
 int hello_world();
@@ -27,7 +28,7 @@ void TextCentered(std::string text, ImColor startColor, ImColor endColor, float 
 void DrawCircularLoadingSpinner(float x_add = 0.f, float y_add = 0.f, float current_ticks = 0.f, float max_ticks = 0.f);
 static void RoundedRect(ImVec2 size, ImU32 color);
 void RoundedImage(ImTextureID user_texture_id, const ImVec2 &size, const ImVec2 &rounding, int border_thickness, const ImU32 &border_color, int image_opacity);
-void clear_screen();
+void init_style();
 void connect_page(int &logo_add, int &logo_pos, int *screenW, ImGuiStyle *style, bool *good_contact);
 void main_page(int *logo_add, int *logo_pos, int *screenW, ImGuiStyle *style, bool *good_login, int *login_missmatches);
 
@@ -44,11 +45,15 @@ namespace gui
     void connect_to_db(const std::string &contact_point)
     {
         DbHandler = new db::db_handler(contact_point.c_str());
+        globals.connecting_to_db = false;
     }
 
     bool check_db_connection()
     {
-        return DbHandler->check_db_contact_point();
+        if (DbHandler != nullptr)
+            return DbHandler->is_connected();
+        else
+            return false;
     }
 
     void TextCentered(std::string text, ImColor startColor, ImColor endColor, float add_x = 0, float add_y = 0, bool should_anim = false)
@@ -195,16 +200,22 @@ namespace gui
         }
     }
 
-    bool check_login_data(std::string username, std::string password)
+    void init_style()
     {
-        if (username == "admin" && password == "123")
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        ImVec4 *colors = ImGui::GetStyle().Colors;
+
+        ImGui::GetStyle().WindowRounding = 5.0f;
+        ImGui::GetStyle().FrameRounding = 5.0f;
+
+        colors[ImGuiCol_WindowBg].w = 1.0f;
+        colors[ImGuiCol_Button] = ImColor(171, 92, 255);
+        colors[ImGuiCol_ButtonHovered] = ImColor(179, 114, 247);
+        colors[ImGuiCol_ButtonActive] = ImColor(190, 136, 247);
+
+        // style->Colors[ImGuiCol_Button] = ImColor(171, 92, 255);         // darkest
+        // style->Colors[ImGuiCol_ButtonHovered] = ImColor(179, 114, 247); // light
+        // style->Colors[ImGuiCol_ButtonActive] = ImColor(190, 136, 247);  // lighter
+        // style->FrameRounding = 5.0f;
     }
 
     bool Spinner(const char *label, float radius, int thickness, const ImU32 &color)
@@ -248,9 +259,19 @@ namespace gui
         window->DrawList->PathStroke(color, false, thickness);
     }
 
+    void loading_window(std::string text)
+    {
+        ImColor startColor(108, 122, 137, 255);
+        ImColor endColor(25, 122, 224, 255);
+        gui::TextCentered(text, startColor, endColor, -5, 90, true);
+        gui::Spinner("##loadingSpin", 60, 3, IM_COL32(108, 122, 137, 255));
+    }
+
+    // non-async
     void connect_page(int &logo_add, int &logo_pos, int *screenW, ImGuiStyle *style, bool *good_contact)
     {
         static bool invalid_contact = true;
+
         if (logo_add > -20)
             logo_add -= 1;
         else if (logo_pos < 40)
@@ -266,11 +287,6 @@ namespace gui
         ImGui::PushFont(globals.logo_font);
         ImGui::Text("POOFie");
         ImGui::PopFont();
-
-        style->Colors[ImGuiCol_Button] = ImColor(171, 92, 255);         // darkest
-        style->Colors[ImGuiCol_ButtonHovered] = ImColor(179, 114, 247); // light
-        style->Colors[ImGuiCol_ButtonActive] = ImColor(190, 136, 247);  // lighter
-        style->FrameRounding = 5.0f;
 
         ImGui::SetCursorPos(ImVec2((*screenW / 2) - IM_ARRAYSIZE(globals.contact_point), 150));
         ImGui::InputText("##", globals.contact_point, IM_ARRAYSIZE(globals.contact_point));
@@ -289,20 +305,42 @@ namespace gui
         }
 
         ImGui::SetCursorPos(ImVec2((*screenW / 2) - 130, 270));
+        // if (ImGui::Button("Login", ImVec2(267, 40)))
+        // {
+        //     globals.connecting_to_db = true;
+        //     gui::connect_to_db(contact_point);
+        //     if (gui::check_db_connection())
+        //     {
+        //         *good_contact = true;
+        //         globals.login_loading = true;
+        //         globals.main_form = true;
+        //         globals.login_form = false;
+        //     }
+        //     else
+        //     {
+        //         invalid_contact = false;
+        //     }
+        // }
         if (ImGui::Button("Login", ImVec2(267, 40)))
         {
-            gui::connect_to_db(contact_point);
-            if (gui::check_db_connection())
-            {
-                *good_contact = true;
-                globals.login_loading = true;
-                globals.main_form = true;
-                globals.login_form = false;
-            }
-            else
-            {
-                invalid_contact = false;
-            }
+            std::string contact_point = globals.contact_point;
+            globals.connecting_to_db = true;
+
+            // Call the callback asynchronously after attempting to connect
+            std::thread([contact_point, &good_contact]()
+                        {
+        gui::connect_to_db(contact_point);
+        bool connected = gui::check_db_connection();
+        if (connected) {
+            *good_contact = true;
+            globals.login_loading = true;
+            globals.main_form = true;
+            globals.login_form = false;
+            // globals.connecting_to_db = true;
+        } else {
+            invalid_contact = false;
+        } })
+                .detach();
         }
     }
 
@@ -319,4 +357,11 @@ namespace gui
         ImGui::Text("POOFie");
         ImGui::PopFont();
     }
+
+    void clean()
+    {
+        delete DbHandler;
+    }
 }
+
+// Only takes a while to load when bad contact point is provided but goes instantly when good contact point is provided.

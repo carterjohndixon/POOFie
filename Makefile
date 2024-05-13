@@ -3,7 +3,7 @@ BUILD_DIR = build/debug
 RELEASE_DIR = build/release
 CC = g++
 SRC_FILES = $(wildcard src/*.cpp) $(wildcard src/menu/*.cpp) $(wildcard src/DB_handler/*.cpp) $(wildcard imgui/*.cpp)
-OBJ_NAME = play
+OBJ_NAME = Cassandra
 INCLUDE_PATHS = -Iinclude
 LIBRARY_PATHS = -Llib
 COMPILER_FLAGS = -std=c++20 -Wall -O0 -g
