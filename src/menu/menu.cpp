@@ -57,13 +57,13 @@ void menu::render(SDL_Window *window)
                 exit(1337);
         }
 
-        if (globals.login_form && on_login_page && !globals.failed && !globals.connecting_to_db)
+        if (globals.login_form && on_login_page && !globals.failed) // && !globals.connecting_to_db)
         {
             gui::connect_page(logo_add, logo_pos, &screenW, &style, &good_login);
-        }
-        else if (globals.connecting_to_db && !globals.login_loading && !globals.failed)
-        {
-            gui::loading_window("Connecting to Cassandra...");
+            if (globals.connecting_to_db)
+            {
+                gui::loading_window("Connecting to Cassandra...");
+            }
         }
         else if (globals.login_loading && !globals.failed)
         {
