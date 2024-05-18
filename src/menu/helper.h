@@ -270,11 +270,8 @@ namespace gui
         gui::Spinner("##loadingSpin", 60, 3, IM_COL32(108, 122, 137, 255));
     }
 
-    // non-async
     void connect_page(int &logo_add, int &logo_pos, int *screenW, ImGuiStyle *style, bool *good_contact)
     {
-        // static bool invalid_contact = true;
-
         if (logo_add > -20)
             logo_add -= 1;
         else if (logo_pos < 40)
@@ -294,8 +291,6 @@ namespace gui
         ImGui::SetCursorPos(ImVec2((*screenW / 2) - IM_ARRAYSIZE(globals.contact_point), 150));
         ImGui::InputText("##", globals.contact_point, IM_ARRAYSIZE(globals.contact_point));
 
-        // std::string contact_point = globals.contact_point;
-
         std::string contact_point;
         {
             std::lock_guard<std::mutex> lock(contact_point_mutex);
@@ -314,22 +309,6 @@ namespace gui
         }
 
         ImGui::SetCursorPos(ImVec2((*screenW / 2) - 130, 270));
-        // if (ImGui::Button("Login", ImVec2(267, 40)))
-        // {
-        //     globals.connecting_to_db = true;
-        //     gui::connect_to_db(contact_point);
-        //     if (gui::check_db_connection())
-        //     {
-        //         *good_contact = true;
-        //         globals.login_loading = true;
-        //         globals.main_form = true;
-        //         globals.login_form = false;
-        //     }
-        //     else
-        //     {
-        //         invalid_contact = false;
-        //     }
-        // }
 
         if (ImGui::Button("Login", ImVec2(267, 40)))
         {
