@@ -8,7 +8,6 @@ namespace db
 {
     db_handler::db_handler(const char *contact_points)
     {
-        this->loading = true;
         this->cluster = cass_cluster_new();
         this->session = cass_session_new();
         this->contact_points = contact_points;
@@ -17,8 +16,6 @@ namespace db
         cass_cluster_set_contact_points(cluster, contact_points);
 
         CassFuture *connect_future = cass_session_connect(this->session, this->cluster);
-
-        this->loading = false;
 
         *this->rc = cass_future_error_code(connect_future);
 
@@ -32,6 +29,8 @@ namespace db
     {
         cass_cluster_free(this->cluster);
         cass_session_free(this->session);
+
+        delete this->rc;
     }
 
     bool db_handler::is_connected()

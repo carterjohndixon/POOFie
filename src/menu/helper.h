@@ -32,6 +32,9 @@ void init_style();
 void connect_page(int &logo_add, int &logo_pos, int *screenW, ImGuiStyle *style, bool *good_contact);
 void main_page(int *logo_add, int *logo_pos, int *screenW, ImGuiStyle *style, bool *good_login, int *login_missmatches);
 
+std::mutex contact_point_mutex;
+std::atomic<bool> invalid_contact = true;
+
 namespace gui
 {
 
@@ -270,7 +273,7 @@ namespace gui
     // non-async
     void connect_page(int &logo_add, int &logo_pos, int *screenW, ImGuiStyle *style, bool *good_contact)
     {
-        static bool invalid_contact = true;
+        // static bool invalid_contact = true;
 
         if (logo_add > -20)
             logo_add -= 1;
@@ -291,12 +294,18 @@ namespace gui
         ImGui::SetCursorPos(ImVec2((*screenW / 2) - IM_ARRAYSIZE(globals.contact_point), 150));
         ImGui::InputText("##", globals.contact_point, IM_ARRAYSIZE(globals.contact_point));
 
-        std::string contact_point = globals.contact_point;
+        // std::string contact_point = globals.contact_point;
+
+        std::string contact_point;
+        {
+            std::lock_guard<std::mutex> lock(contact_point_mutex);
+            contact_point = globals.contact_point;
+        }
 
         ImGui::SetCursorPos(ImVec2(680, 151));
         ImGui::Image(globals.username_icon, ImVec2(18, 18));
 
-        if (invalid_contact == false)
+        if (!invalid_contact)
         {
             ImGui::PushFont(globals.verdana);
             ImGui::SetCursorPos(ImVec2((*screenW / 2) - IM_ARRAYSIZE(globals.contact_point), 175));
@@ -321,25 +330,31 @@ namespace gui
         //         invalid_contact = false;
         //     }
         // }
+
         if (ImGui::Button("Login", ImVec2(267, 40)))
         {
-            std::string contact_point = globals.contact_point;
-            globals.connecting_to_db = true;
+            std::string captured_contact_point;
+            {
+                std::lock_guard<std::mutex> lock(contact_point_mutex);
+                captured_contact_point = globals.contact_point;
+            }
 
-            // Call the callback asynchronously after attempting to connect
-            std::thread([contact_point, &good_contact]()
+            globals.connecting_to_db = true;
+            invalid_contact = true;
+
+            std::thread([captured_contact_point, good_contact]()
                         {
-        gui::connect_to_db(contact_point);
-        bool connected = gui::check_db_connection();
-        if (connected) {
-            *good_contact = true;
-            globals.login_loading = true;
-            globals.main_form = true;
-            globals.login_form = false;
-            // globals.connecting_to_db = true;
-        } else {
-            invalid_contact = false;
-        } })
+            gui::connect_to_db(captured_contact_point);
+            bool connected = gui::check_db_connection();
+            if (connected) {
+                *good_contact = true;
+                globals.login_loading = true;
+                globals.main_form = true;
+                globals.login_form = false;
+            } else {
+                invalid_contact = false;
+            }
+            globals.connecting_to_db = false; })
                 .detach();
         }
     }

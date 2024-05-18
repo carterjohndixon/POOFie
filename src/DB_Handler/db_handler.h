@@ -23,8 +23,6 @@ namespace db
 
         bool is_connected();
 
-        bool loading = false;
-
     private:
         CassCluster *cluster;
         CassSession *session;
