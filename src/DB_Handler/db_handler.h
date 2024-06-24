@@ -19,6 +19,7 @@ namespace db
     {
     public:
         db_handler(const char *contact_points);
+        // db_handler(const char *username, const char *password);
         ~db_handler();
 
         bool is_connected();

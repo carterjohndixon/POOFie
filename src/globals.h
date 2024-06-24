@@ -19,11 +19,33 @@ public:
     // ImTextureID password_icon = nullptr;
     // ImTextureID cs2_icon = nullptr;
     ImTextureID poof_logo = nullptr;
+    ImTextureID ham_button = nullptr;
+    ImTextureID circle_x = nullptr;
+    ImTextureID back_arrow = nullptr;
+
+    ImVec2 window_pos{0, 0};
+    ImVec2 connect_window_size{350, 450};
+    ImVec2 window_size{800, 600};
+
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar;
+    ImGuiWindowFlags window_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse;
+
+    char const *FileDialogFilterPatterns[2] = {".zip", ".txt"};
+    char OpenedFileName[255];
+
+    // true: Datastax
+    // false: Contact Point
+    bool connection_method = false;
 
     bool active = true;
+    bool showSideMenu = false;
+    bool showText = false;
     bool connecting_to_db = false;
     char contact_point[255] = "";
-    bool login_form = true;
+    char cassandra_username[510] = "";
+    char cassandra_password[510] = "";
+    bool first_page = true;
+    bool login_form = false;
     bool login_loading = false;
     bool main_form = false;
     bool failed = false;
@@ -31,6 +53,7 @@ public:
     std::string fail_message = "";
     std::string connection_message = "";
     int tick_count = 0;
+    int currentSideTab = -1;
     ImFont *verdana;
     ImFont *logo_font;
 };

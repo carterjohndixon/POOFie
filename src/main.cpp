@@ -1,5 +1,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 #include <imgui/imgui_impl_sdl2.h>
 #include <imgui/imgui_impl_opengl3.h>
 #include <OpenGL/gl.h>
@@ -18,10 +19,11 @@
 
 #include <iostream>
 
-// static int WindowWidth = 175;
-// static int WindowHeight = 225;
-static int WindowWidth = 800;
-static int WindowHeight = 600;
+// static int WindowWidth = 800;
+// static int WindowHeight = 600;
+
+static int WindowWidth = 350;
+static int WindowHeight = 450;
 
 const char *cassandra_icon = "assets/cassandra.png";
 
@@ -106,11 +108,26 @@ int main(int, char **)
         GLuint textureID = LoadTextureFromFileInMemory(poof_logo, 5004);
         globals.poof_logo = (void *)(intptr_t)textureID;
     }
+    if (globals.ham_button == nullptr)
+    {
+        GLuint textureID = LoadTextureFromFileInMemory(ham_button, 384);
+        globals.ham_button = (void *)(intptr_t)textureID;
+    }
+    if (globals.circle_x == nullptr)
+    {
+        GLuint textureID = LoadTextureFromFileInMemory(circle_x, 840);
+        globals.circle_x = (void *)(intptr_t)textureID;
+    }
+    if (globals.back_arrow == nullptr)
+    {
+        GLuint textureID = LoadTextureFromFileInMemory(back_arrow, 419);
+        globals.back_arrow = (void *)(intptr_t)textureID;
+    }
 
     globals.verdana = io.Fonts->AddFontFromFileTTF("../sdl-opengl/fonts/Verdana.ttf", 15);
     globals.logo_font = io.Fonts->AddFontFromFileTTF("../sdl-opengl/fonts/verdanab.ttf", 53);
 
-    menu::init();
+    menu::init(window);
 
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
@@ -127,6 +144,11 @@ int main(int, char **)
                 running = false;
         }
 
+        // int mouseX, mouseY;
+        // SDL_GetMouseState(&mouseX, &mouseY);
+
+        // std::cout << "(" << mouseX << ", " << mouseY << ")\n";
+
         // Start ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
@@ -136,7 +158,7 @@ int main(int, char **)
         SDL_GetWindowSize(window, &guiWidth, &guiHeight);
 
         ImVec2 centerPoint(guiWidth * 0.5f, guiHeight * 0.5);
-        ImVec2 windowSize(WindowWidth, WindowHeight);
+        ImVec2 windowSize(guiWidth, guiHeight);
         ImVec2 windowPos(centerPoint.x - windowSize.x * 0.5f, centerPoint.y - windowSize.y * 0.5f);
 
         // Set ImGui window position
@@ -145,7 +167,7 @@ int main(int, char **)
         // Set ImGui window size to match SDL window size
         ImGui::SetNextWindowSize(windowSize);
         {
-            menu::render(window);
+            menu::render();
         }
 
         glClearColor(0.108f, 0.122f, 0.137f, 1.0f);
