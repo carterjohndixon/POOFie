@@ -17,19 +17,13 @@ void menu::render()
     // static int screenH = 600;
 
     static float screenW = 350;
-    static int screenH = 450;
-    static int newScreenW = 800;
-    static int newScreenH = 600;
+    static float screenH = 450;
+    static float newScreenW = 800;
+    static float newScreenH = 600;
 
     ImGui::Begin("POOFie", &globals.active, globals.window_flags);
     {
-        // if (!logo_back)
-        // {
-        //     ImGui::SetCursorPos(ImVec2(800 / 2 - 10, 8));
-        //     ImGui::Image(globals.poof_logo, ImVec2(24, 24));
-        // }
         if (!on_first_page)
-        // if (!on_login_page)
         {
             if (243 > wait_1)
             {
@@ -43,20 +37,6 @@ void menu::render()
             else
                 wait_2++;
         }
-        if (!globals.checked_connection)
-        {
-            if (!gui::IsInternetConnected())
-            {
-                globals.connection_message = "(Connected)";
-            }
-            else
-            {
-                globals.connection_message = "(Failed to check connection)";
-                globals.fail_message = "Failed to check connection";
-                globals.failed = true;
-            }
-            globals.checked_connection = true;
-        }
 
         if (globals.failed)
         {
@@ -68,14 +48,21 @@ void menu::render()
         if (globals.first_page && on_first_page && !globals.failed)
         {
             gui::connect_method_quest(&globals.connect_window_size.x, &style);
-            // gui::connect_page(logo_add, logo_pos, &screenW, &style, &good_login);
-            // globals.login_form, on_login_page = true;
-            // on_first_page = true;
             on_login_page = true;
         }
-        else if (globals.login_form && on_login_page && !globals.failed)
+        // Contact Point
+        else if (globals.login_form && on_login_page && !globals.connection_method && !globals.failed)
         {
             gui::connect_page_contact_point(&screenW, &style);
+            if (globals.connecting_to_db)
+            {
+                gui::loading_window("Connecting to Cassandra...");
+            }
+        }
+        // Datastax
+        else if (globals.login_form && on_login_page && globals.connection_method && !globals.failed)
+        {
+            gui::connect_page_datastax(&screenW, &style);
             if (globals.connecting_to_db)
             {
                 gui::loading_window("Connecting to Cassandra...");
@@ -84,6 +71,12 @@ void menu::render()
         else if (globals.login_loading && !globals.failed)
         {
             gui::main_page(logo_add, logo_pos, &newScreenW, &style, good_login);
+        }
+        else if (globals.logout_main_page && !globals.failed)
+        {
+            on_first_page = true;
+            gui::connect_method_quest(&globals.connect_window_size.x, &style);
+            on_login_page = true;
         }
     }
     ImGui::End();
@@ -123,15 +116,13 @@ void menu::BackArrow(ImTextureID texture_id, const ImVec2 &size, const ImVec2 &r
 
     if (clickable)
     {
-        static bool showText = false;
         if (ImGui::IsItemClicked())
         {
-            showText = true;
-            globals.showSideMenu = true;
-        }
-
-        if (showText)
+            std::cout << "Going back\n";
+            globals.backArrowClicked = true;
             lastPage(screenW, &ImGui::GetStyle());
+            // gui::connect_method_quest(screenW, &ImGui::GetStyle());
+        }
     }
 }
 

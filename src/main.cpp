@@ -123,6 +123,11 @@ int main(int, char **)
         GLuint textureID = LoadTextureFromFileInMemory(back_arrow, 419);
         globals.back_arrow = (void *)(intptr_t)textureID;
     }
+    if (globals.logout == nullptr)
+    {
+        GLuint textureID = LoadTextureFromFileInMemory(logout, 388);
+        globals.logout = (void *)(intptr_t)textureID;
+    }
 
     globals.verdana = io.Fonts->AddFontFromFileTTF("../sdl-opengl/fonts/Verdana.ttf", 15);
     globals.logo_font = io.Fonts->AddFontFromFileTTF("../sdl-opengl/fonts/verdanab.ttf", 53);
@@ -131,7 +136,7 @@ int main(int, char **)
 
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    SDL_SetWindowHitTest(window, HitTestCallback, NULL);
+    // SDL_SetWindowHitTest(window, HitTestCallback, NULL);
 
     bool running = true;
     while (running)

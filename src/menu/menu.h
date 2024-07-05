@@ -7,6 +7,8 @@
 #include <SDL2/SDL_opengl.h>
 #endif
 
+#include <stack>
+
 namespace menu
 {
     void render();
