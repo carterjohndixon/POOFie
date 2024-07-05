@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdio.h>
 
+#include "../globals.h"
 // Connected to Test Cluster at 127.0.0.1:9042
 // [cqlsh 6.1.0 | Cassandra 4.1.4 | CQL spec 3.4.6 | Native protocol v5]
 // Use HELP for help.
@@ -15,9 +16,10 @@
 
 namespace db
 {
-    db_handler::db_handler(const char *contact_points)
-    // db_handler::db_handler(const char *username, const char *password)
+    // db_handler::db_handler(const char *contact_points)
+    db_handler::db_handler(const char *contact_points, const char *username, const char *password)
     {
+        std::cout << "Contact point\n";
         this->cluster = cass_cluster_new();
         this->session = cass_session_new();
         this->contact_points = contact_points;
@@ -25,14 +27,9 @@ namespace db
 
         cass_cluster_set_contact_points(cluster, contact_points);
 
-        // const char *username = "cass_ui_dev";
-        // const char *password = "cassandra_gui";
-
-        // cass_cluster_set_credentials(cluster, username, password);
+        cass_cluster_set_credentials(cluster, username, password);
 
         CassFuture *connect_future = cass_session_connect(this->session, this->cluster);
-
-        // cass_cluster_set_client_id(this->cluster, cass_uuid_gen_new())
 
         *this->rc = cass_future_error_code(connect_future);
 
@@ -42,75 +39,118 @@ namespace db
         }
 
         cass_future_free(connect_future);
-        cass_session_free(this->session);
-        cass_cluster_free(this->cluster);
+
+        const char *query = "SELECT item_count FROM store.shopping_cart";
+        CassStatement *statement = cass_statement_new(query, 0);
+
+        CassFuture *result_future = cass_session_execute(this->session, statement);
+        cass_future_wait(result_future);
+
+        *this->rc = cass_future_error_code(result_future);
+        if (*this->rc != CASS_OK)
+        {
+            std::cerr << "Query execution failed\n";
+            cass_future_free(result_future);
+            cass_statement_free(statement);
+            return;
+        }
+
+        const CassResult *result = cass_future_get_result(result_future);
+        CassIterator *rows = cass_iterator_from_result(result);
+
+        while (cass_iterator_next(rows))
+        {
+            const CassRow *row = cass_iterator_get_row(rows);
+            const CassValue *value = cass_row_get_column_by_name(row, "item_count");
+
+            cass_int32_t item_count;
+            cass_value_get_int32(value, &item_count);
+
+            std::cout << "Item Count: " << item_count << std::endl;
+        }
+
+        cass_iterator_free(rows);
+        cass_result_free(result);
+        cass_future_free(result_future);
+        cass_statement_free(statement);
     }
 
-    // db_handler::db_handler(const char *username, const char *password)
-    // {
-    //     this->cluster = cass_cluster_new();
-    //     this->session = cass_session_new();
-    //     this->contact_points = contact_points;
-    //     this->rc = new CassError;
+    db_handler::db_handler(const char *client_id, const char *client_secret, const std::string *file_path)
+    {
+        std::cout << "Datastax\n";
+        this->cluster = cass_cluster_new();
+        this->session = cass_session_new();
+        this->rc = new CassError;
 
-    //     // cass_cluster_set_credentials(cluster, "cass_ui_dev", "cassandra_gui");
-    //     cass_session_connect_keyspace(session, cluster, "store");
+        const char *secure_connect_bundle = file_path->c_str();
+        if (cass_cluster_set_cloud_secure_connection_bundle(this->cluster, secure_connect_bundle) != CASS_OK)
+        {
+            fprintf(stderr, "Unable to configure cloud using the secure connection bundle: %s", secure_connect_bundle);
+            globals.ConnectionErr = true;
+            globals.ConnectionErrStr = "Invalid zip file";
+        }
+        else
+        {
+            globals.ConnectionErr = false;
+        }
 
-    //     cass_cluster_set_connect_timeout(cluster, 10000);
+        cass_cluster_set_credentials(this->cluster, client_id, client_secret);
 
-    //     CassFuture *connect_future = cass_session_connect(session, cluster);
+        CassFuture *connect_future = cass_session_connect(this->session, this->cluster);
+        if (cass_future_error_code(connect_future) != CASS_OK)
+        {
+            const char *message;
+            size_t message_length;
+            cass_future_error_message(connect_future, &message, &message_length);
+            fprintf(stderr, "Unable to establish connection: '%.*s'\n", (int)message_length, message);
+            // Handle error
+            cass_future_free(connect_future);
+            return;
+        }
 
-    //     *this->rc = cass_future_error_code(connect_future);
+        cass_future_free(connect_future);
 
-    //     if (*this->rc == CASS_OK)
-    //     {
+        // Query execution logic
+        const char *query = "SELECT item_count FROM store.shopping_cart";
+        CassStatement *statement = cass_statement_new(query, 0);
+        CassFuture *result_future = cass_session_execute(this->session, statement);
+        cass_future_wait(result_future);
 
-    //         std::cout << "Successfully connected to Cassandra\n";
+        if (cass_future_error_code(result_future) == CASS_OK)
+        {
+            const CassResult *result = cass_future_get_result(result_future);
+            CassIterator *rows = cass_iterator_from_result(result);
 
-    //         const char *query = "SELECT release_version FROM system.local";
-    //         CassStatement *statement = cass_statement_new(query, 0);
+            while (cass_iterator_next(rows))
+            {
+                const CassRow *row = cass_iterator_get_row(rows);
+                const CassValue *value = cass_row_get_column_by_name(row, "item_count");
 
-    //         CassFuture *result_future = cass_session_execute(session, statement);
+                cass_int32_t item_count;
+                cass_value_get_int32(value, &item_count);
 
-    //         if (cass_future_error_code(result_future) == CASS_OK)
-    //         {
-    //             /* Retrieve result set and get the first row */
-    //             const CassResult *result = cass_future_get_result(result_future);
-    //             const CassRow *row = cass_result_first_row(result);
+                std::cout << "Item Count: " << item_count << std::endl;
+            }
 
-    //             if (row)
-    //             {
-    //                 const CassValue *value = cass_row_get_column_by_name(row, "release_version");
+            cass_iterator_free(rows);
+            cass_result_free(result);
+        }
+        else
+        {
+            const char *message;
+            size_t message_length;
+            cass_future_error_message(result_future, &message, &message_length);
+            std::cerr << "Unable to run query: " << std::string(message, message_length) << std::endl;
+        }
 
-    //                 const char *release_version;
-    //                 size_t release_version_length;
-    //                 cass_value_get_string(value, &release_version, &release_version_length);
-    //                 printf("release_version: '%.*s'", (int)release_version_length, release_version);
-    //             }
-
-    //             cass_result_free(result);
-    //         }
-    //         else
-    //         {
-    //         }
-
-    //         cass_statement_free(statement);
-    //         cass_future_free(result_future);
-    //     }
-    //     else
-    //     {
-    //         std::cout << "Couldn't connected to Cassandra\n";
-    //     }
-
-    //     cass_future_free(connect_future);
-    //     cass_cluster_free(this->cluster);
-    //     cass_session_free(this->session);
-    // }
+        cass_statement_free(statement);
+        cass_future_free(result_future);
+    }
 
     db_handler::~db_handler()
     {
-        // cass_cluster_free(this->cluster);
-        // cass_session_free(this->session);
+        cass_cluster_free(this->cluster);
+        cass_session_free(this->session);
 
         delete this->rc;
     }

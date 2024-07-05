@@ -1,21 +1,17 @@
-// #include "menu.h"
-// #include "SideMenu/dashboard.cpp"
-// #include "SideMenu/query.cpp"
-// #include "SideMenu/tables.cpp"
-// #include "../globals.h"
-// #include "../DB_Handler/db_handler.h"
-// #include <imgui/imgui_internal.h>
-// #include <imgui/bBlur.h>
-// #include <imgui/imgui.h>
-// #include <FileDialog/tinyfiledialogs.h>
+#include "../globals.h"
+#include <FileDialog/tinyfiledialogs.h>
 
-// #include <thread>
-// #include <iostream>
+#include <thread>
+#include <iostream>
 
-// namespace gui
-// {
-// void
-// }
+namespace FileDialog
+{
+    // int aNumOfFilterPatterns, const char *const *aFilterPatterns, const char *aSingleFilterDescription, int aAllowMultipleSelects
+    void openFileDialog(const char *Title, const char *DefaultPath, int NumOfFilterPatterns, const char *FilerPatterns, const char *FileDesc, int numOfSelectableFiles)
+    {
+        globals.OpenedFilePath = tinyfd_openFileDialog(Title, DefaultPath, NumOfFilterPatterns, &FilerPatterns, FileDesc, numOfSelectableFiles);
+    }
+}
 
 // globals.OpenedFileName = tinyfd_openFileDialog(
 //     "Select Your Secure Connect Zip File",

@@ -11,6 +11,7 @@
 
 #include <thread>
 #include <iostream>
+#include <filesystem>
 
 static float rotation = 0.0f;
 static ImVec2 spinnerCenter(0.0f, 0.0f);
@@ -26,7 +27,9 @@ float GetTextCursorPosX(float windowSizeX, const char *text);
 
 int hello_world();
 
-void connect_to_db(const std::string &username, const std::string &password);
+void ButtonHovered();
+void connect_to_db_contact_point(const std::string &username, const std::string &password);
+void connect_to_db_datastax(const std::string &client_id, const std::string &client_secret, const std::string &file_path);
 void hamButtonPressed();
 void TextCentered(std::string text, ImColor startColor, ImColor endColor, float add_x = 0, float add_y = 0, bool should_anim = false);
 void DrawCircularLoadingSpinner(float x_add = 0.f, float y_add = 0.f, float current_ticks = 0.f, float max_ticks = 0.f);
@@ -34,29 +37,32 @@ static void RoundedRect(ImVec2 size, ImU32 color);
 void init_style();
 void connect_method_quest(float *screenW, ImGuiStyle *style, bool *good_contact);
 void connect_page_contact_point(float *screenW, ImGuiStyle *style);
-void main_page(int *logo_add, int *logo_pos, int *screenW, ImGuiStyle *style, bool *good_login, int *login_missmatches);
+void connect_page_datastax(float *screenW, ImGuiStyle *style);
+void main_page(int *logo_add, int *logo_pos, float *screenW, ImGuiStyle *style, bool *good_login, int *login_missmatches);
 
 std::mutex contact_point_mutex;
 std::mutex cass_user_mutex;
 std::mutex cass_pass_mutex;
+
 std::mutex cass_zip_path_mutex;
-std::atomic<bool> invalid_contact = true;
+std::mutex cass_zip_file_mutex;
+std::mutex cass_client_id_mutex;
+std::mutex cass_client_secret_mutex;
+
+std::atomic<bool> invalid_contact = false;
 
 namespace gui
 {
 
-    bool IsInternetConnected()
+    void connect_to_db_contact_point(const std::string &contact_point, const std::string &username, const std::string &password)
     {
-        // its a ghetto method but idc tbh, also needs admin rights
-        int result = system("ping -c 1 google.com");
-        return result == 0;
+        DbHandler = new db::db_handler(contact_point.c_str(), username.c_str(), password.c_str());
+        globals.connecting_to_db = false;
     }
 
-    void connect_to_db(const std::string &contact_point)
-    // void connect_to_db(const std::string &username, const std::string &password)
+    void connect_to_db_datastax(const std::string &client_id, const std::string &client_secret, const std::string &file_path)
     {
-        DbHandler = new db::db_handler(contact_point.c_str());
-        // DbHandler = new db::db_handler(username.c_str(), password.c_str());
+        DbHandler = new db::db_handler(client_id.c_str(), client_secret.c_str(), &file_path);
         globals.connecting_to_db = false;
     }
 
@@ -66,6 +72,12 @@ namespace gui
             return DbHandler->is_connected();
         else
             return false;
+    }
+
+    void ButtonHovered()
+    {
+        if (ImGui::IsItemHovered())
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     }
 
     void TextCentered(std::string text, ImColor startColor, ImColor endColor, float add_x = 0, float add_y = 0, bool should_anim = false)
@@ -133,29 +145,23 @@ namespace gui
         ImGuiIO &io = ImGui::GetIO();
         ImDrawList *drawList = ImGui::GetWindowDrawList();
 
-        // Calculate the spinner position (centered)
         spinnerCenter = ImVec2(window->Pos.x + x_add + window->Size.x * 0.5f, window->Pos.y + y_add + window->Size.y * 0.5f);
-        // ImVec2 spinnerCenter(io.DisplaySize.x * 0.5f + x_add, io.DisplaySize.y * 0.5f + y_add);
 
         static int def_alpha = 255;
 
         if (current_ticks > max_ticks)
             def_alpha--;
 
-        // Draw a semi-transparent background circle
-
-        // Draw the rotating circular loading spinner as dots
-        const int numDots = 12; // Number of dots in the spinner
+        const int numDots = 12;
         for (int i = 0; i < numDots; ++i)
         {
             float angle = rotation + i * (30.0f * 3.14159265359f / 180.0f);
             ImVec2 dotPos(spinnerCenter.x + cosf(angle) * spinnerRadius, spinnerCenter.y + sinf(angle) * spinnerRadius);
-            float dotSize = 4.0f; // Adjust the size of the dots
+            float dotSize = 4.0f;
             drawList->AddCircleFilled(dotPos, dotSize, IM_COL32(171, 92, 255, def_alpha), 12);
         }
 
-        // Adjust the rotation speed by changing the value below
-        rotation += 3.05f * io.DeltaTime; // Adjust the multiplier (0.05f) for speed
+        rotation += 3.05f * io.DeltaTime;
         if (rotation > 360.0f)
             rotation -= 360.0f;
     }
@@ -172,28 +178,21 @@ namespace gui
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         ImVec2 endPos = ImVec2(window->DC.CursorPos.x + size.x, window->DC.CursorPos.y + size.y);
         window->DrawList->AddRectFilled(window->DC.CursorPos, endPos, color, 4.0f);
-        // window->DrawList->AddRectFilled(window->DC.CursorPos, window->DC.CursorPos + size, color, 4.0f);
     }
 
-    // void VerticalTabs(const char *labels[], int labelsCount, int *selectedTab, bool showSideMenu)
     void VerticalTabs(const char *labels[], int labelsCount, bool showSideMenu)
     {
-        static int logo_pos = -70;
-        static int logo_add = 0;
-        static int screenW = 800;
-        static int selected_button = -1;
-
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         if (globals.showSideMenu)
         {
-            ImGui::BringWindowToFocusFront(window);
+            // ImGui::BringWindowToFocusFront(window);
 
-            ImGui::SetNextWindowPos(ImVec2(-10, 0));
+            // ImGui::SetNextWindowPos(ImVec2(-10, 0));
+            ImGui::SetNextWindowPos(ImVec2(610, 0));
             ImGui::SetNextWindowSize(ImVec2(200, ImGui::GetIO().DisplaySize.y));
             ImGui::Begin("SideMenu", nullptr, globals.window_window_flags);
 
             ImVec4 *colors = ImGui::GetStyle().Colors;
-            // colors[ImGuiCol_WindowBg].w = 1.0f;
             colors[ImGuiCol_Button] = ImColor(69, 69, 69);
             colors[ImGuiCol_ButtonHovered] = ImColor(98, 98, 98);
             colors[ImGuiCol_ButtonActive] = ImColor(140, 140, 140);
@@ -201,14 +200,16 @@ namespace gui
             ImGui::GetStyle().FrameRounding = 0.0f;
             ImGui::GetStyle().WindowPadding = ImVec2(0, 0);
 
-            ImGui::SetCursorPos(ImVec2(40, 30));
+            // ImGui::SetCursorPos(ImVec2(40, 14));
+            ImGui::SetCursorPos(ImVec2(140, 14));
             menu::RounderRetract(globals.ham_button, ImVec2(24, 24), ImVec2(8, 8), 8, IM_COL32(0, 0, 0, 0), 255);
+            gui::ButtonHovered();
 
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 100);
 
             for (int i = 0; i < labelsCount; ++i)
             {
-                if (i == selected_button)
+                if (i == globals.selected_button)
                 {
                     colors[ImGuiCol_Button] = ImColor(140, 140, 140);
                 }
@@ -220,8 +221,9 @@ namespace gui
                 if (ImGui::Button(labels[i], ImVec2(200, 45)))
                 {
                     globals.currentSideTab = i;
-                    selected_button = i;
+                    globals.selected_button = i;
                 }
+                gui::ButtonHovered();
 
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
             }
@@ -235,9 +237,6 @@ namespace gui
         ImGui::Spacing();
 
         const char *tabLabels[] = {"Dashboard", "Query", "Tables"};
-        // static int selectedTab = 0;
-
-        // VerticalTabs(tabLabels, IM_ARRAYSIZE(tabLabels), &selectedTab, true);
         VerticalTabs(tabLabels, IM_ARRAYSIZE(tabLabels), true);
     }
 
@@ -255,14 +254,9 @@ namespace gui
 
         colors[ImGuiCol_WindowBg].w = 1.0f;
         colors[ImGuiCol_Border].w = 0.0f;
-        colors[ImGuiCol_Button] = ImColor(171, 92, 255);
-        colors[ImGuiCol_ButtonHovered] = ImColor(179, 114, 247);
-        colors[ImGuiCol_ButtonActive] = ImColor(190, 136, 247);
-
-        // style->Colors[ImGuiCol_Button] = ImColor(171, 92, 255);         // darkest
-        // style->Colors[ImGuiCol_ButtonHovered] = ImColor(179, 114, 247); // light
-        // style->Colors[ImGuiCol_ButtonActive] = ImColor(190, 136, 247);  // lighter
-        // style->FrameRounding = 5.0f;
+        colors[ImGuiCol_Button] = ImColor(171, 92, 255);         // Darkest
+        colors[ImGuiCol_ButtonHovered] = ImColor(179, 114, 247); // Light
+        colors[ImGuiCol_ButtonActive] = ImColor(190, 136, 247);  // Lighter
     }
 
     bool Spinner(const char *label, float radius, int thickness, const ImU32 &color)
@@ -275,7 +269,6 @@ namespace gui
         const ImGuiStyle &style = g.Style;
         const ImGuiID id = window->GetID(label);
 
-        // ImVec2 pos = window->DC.CursorPos;
         ImVec2 pos = ImVec2(window->Pos.x + 0.f + window->Size.x * 0.5f, window->Pos.y + 0.f + window->Size.y * 0.5f);
         ImVec2 size((radius) * 2, (radius + style.FramePadding.y) * 2);
 
@@ -284,7 +277,6 @@ namespace gui
         if (!ImGui::ItemAdd(bb, id))
             return false;
 
-        // Render
         window->DrawList->PathClear();
 
         int num_segments = 30;
@@ -293,7 +285,6 @@ namespace gui
         const float a_min = IM_PI * 2.0f * ((float)start) / (float)num_segments;
         const float a_max = IM_PI * 2.0f * ((float)num_segments - 3) / (float)num_segments;
 
-        // const ImVec2 centre = ImVec2(pos.x + radius, pos.y + radius + style.FramePadding.y);
         const ImVec2 centre = ImVec2(pos.x, pos.y + style.FramePadding.y);
 
         for (int i = 0; i < num_segments; i++)
@@ -322,160 +313,311 @@ namespace gui
 
     void connect_method_quest(float *screenW, ImGuiStyle *style)
     {
+        SDL_SetWindowSize(menu::sdl_window, globals.connect_window_size.x, globals.connect_window_size.y);
+        invalid_contact = false;
+        globals.currentSideTab = -1;
+        globals.selected_button = -1;
+        globals.showSideMenu = false;
+
+        gui::init_style();
+        ImGui::BringWindowToFocusFront(ImGui::GetCurrentWindow());
         ImGui::SetCursorPos(ImVec2((*screenW / 2.f) - 10, 14));
         ImGui::Image(globals.poof_logo, ImVec2(24, 24));
+        ImGui::SetCursorPos(ImVec2(10, 40));
         ImGui::TextWrapped("Please select which way you'll connect to your Database.");
         auto dataStaxStr = "Connect via datastax";
         auto contactPointStr = "Connect via contact point";
 
-        ImGui::SetItemTooltip("Secure Connection Bundle Path");
         ImGui::SetCursorPos(ImVec2((gui::GetTextCursorPosX(ImGui::GetWindowSize().x, dataStaxStr)), 180));
         if (ImGui::Button(dataStaxStr))
         {
-            globals.connection_method, globals.login_form = true;
+            globals.connection_method = true;
+            globals.login_form = true;
             globals.first_page = false;
+            globals.backArrowClicked = false;
             std::cout << "Datastax Connection\n";
             std::cout << globals.connection_method << std::endl;
         }
+        gui::ButtonHovered();
         ImGui::SetCursorPos(ImVec2((gui::GetTextCursorPosX(ImGui::GetWindowSize().x, contactPointStr)), 205));
         if (ImGui::Button(contactPointStr))
         {
-            globals.connection_method, globals.first_page = false;
+            globals.connection_method = false;
+            globals.first_page = false;
             globals.login_form = true;
+            globals.backArrowClicked = false;
             std::cout << "Contact Point Connection\n";
             std::cout << globals.connection_method << std::endl;
         }
+        gui::ButtonHovered();
     }
 
     void connect_page_contact_point(float *screenW, ImGuiStyle *style)
     {
-
-        ImGui::SetCursorPos(ImVec2((*screenW / 2) - 10, 14));
-        ImGui::Image(globals.poof_logo, ImVec2(24, 24));
-
-        ImGui::SetCursorPos(ImVec2(30, 14));
-        menu::BackArrow(globals.back_arrow, ImVec2(24, 24), ImVec2(8, 8), 8, IM_COL32(0, 0, 0, 0), 255, true, &globals.connect_window_size.x, gui::connect_method_quest);
-        // menu::BackArrow(globals.back_arrow, ImVec2(24, 24), ImVec2(8, 8), 8, IM_COL32(0, 0, 0, 0), 255, true, &globals.connect_window_size.x, gui::connect_method_quest(screenW, &ImGui::GetStyle()));
-
-        bool disable_controls = globals.connecting_to_db;
-        if (disable_controls)
-            ImGui::BeginDisabled(true);
-
-        // ImGui::TextWrapped("Please enter your Client ID, Secret, and upload the Secure Connection Bundle.", ImGuiInputTextFlags_Multiline);
-
-        ImGui::SetCursorPos(ImVec2((*screenW / 2) - 110, 150));
-        ImGui::InputText("## Contact Point", globals.contact_point, 45);
-        ImGui::SetItemTooltip("Cassandra Contact Point");
-
-        // ImGui::PushItemWidth(-1);
-        // ImGui::InputText("##Client ID", globals.cassandra_username, IM_ARRAYSIZE(globals.cassandra_username));
-        // ImGui::SetItemTooltip("Client ID");
-        // // ImGui::InputText("Client Secret", globals.cassandra_password, IM_ARRAYSIZE(globals.cassandra_password), ImGuiInputTextFlags_Password | ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_AutoSelectAll);
-        // ImGui::InputTextMultiline("##Client Secret", globals.cassandra_password, IM_ARRAYSIZE(globals.cassandra_password), ImVec2(0, ImGui::GetTextLineHeight() * 1.5));
-        // ImGui::SetItemTooltip("Client Secret");
-        // ImGui::PopItemWidth();
-
-        // if (ImGui::Button("Choose Secure Connection Bundle"))
-        // {
-        //     std::cout << "Opening File Dialog\n";
-        // }
-        // ImGui::SameLine();
-        // ImGui::TextWrapped("%s", globals.OpenedFileName);
-
-        // ImGui::SetCursorPos(ImVec2((*screenW / 2) - 110, 210));
-        // ImGui::InputText("## Bundle Path", globals.OpenedFileName, 45);
-        // ImGui::SetItemTooltip("Secure Connection Bundle Path");
-        // ImGui::SetCursorPos(ImVec2(240, 210));
-        // if (ImGui::Button("Browse..."))
-        // {
-        //     // fileDialog.Open();
-        //     std::cout << "Opening File Dialog\n";
-        // }
-
-        // std::string username;
-        // {
-        //     std::lock_guard<std::mutex> lock(cass_user_mutex);
-        //     username = globals.cassandra_username;
-        // }
-        // std::string password;
-        // {
-        //     std::lock_guard<std::mutex> lock(cass_pass_mutex);
-        //     password = globals.cassandra_password;
-        // }
-        // std::string zip_path;
-        // {
-        //     std::lock_guard<std::mutex> lock(cass_zip_path_mutex);
-        //     zip_path = globals.OpenedFileName;
-        // }
-        std::string contact_point;
+        SDL_SetWindowSize(menu::sdl_window, globals.connect_window_size.x, globals.connect_window_size.y);
+        gui::init_style();
+        if (globals.backArrowClicked)
         {
-            std::lock_guard<std::mutex> lock(contact_point_mutex);
-            contact_point = globals.contact_point;
+            gui::connect_method_quest(screenW, &ImGui::GetStyle());
         }
-
-        // ImGui::SetCursorPos(ImVec2(680, 151));
-        // ImGui::Image(globals.username_icon, ImVec2(18, 18));
-
-        if (!invalid_contact)
+        else
         {
-            ImGui::PushFont(globals.verdana);
-            ImGui::SetCursorPos(ImVec2((IM_ARRAYSIZE(globals.contact_point) / 2) - 60, 175));
-            ImGui::TextColored(ImVec4(1.0f, 0.f, 0.f, 1.f), "Invalid contact point!");
-            ImGui::PopFont();
-        }
+            ImGui::SetCursorPos(ImVec2((*screenW / 2) - 10, 14));
+            ImGui::Image(globals.poof_logo, ImVec2(24, 24));
 
-        ImGui::SetCursorPos(ImVec2((*screenW / 2) - 130, 270));
-        if (ImGui::Button("Login", ImVec2(267, 40)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))
-        {
-            // std::string captured_username;
-            // {
-            //     std::lock_guard<std::mutex> lock(cass_user_mutex);
-            //     captured_username = globals.cassandra_username;
-            // }
-            // std::string captured_password;
-            // {
-            //     std::lock_guard<std::mutex> lock(cass_pass_mutex);
-            //     captured_password = globals.cassandra_password;
-            // }
+            ImGui::SetCursorPos(ImVec2(10, 40));
+            ImGui::TextWrapped(globals.ContactPageTextContactPoint);
 
-            std::string captured_contact_point;
+            ImGui::SetCursorPos(ImVec2(30, 10));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 0));
+            if (ImGui::ImageButton(globals.back_arrow, ImVec2(24, 24)))
+            {
+                std::cout << "Going back\n";
+                globals.backArrowClicked = true;
+            }
+            ImGui::PopStyleColor(3);
+            gui::ButtonHovered();
+
+            bool disable_controls = globals.connecting_to_db;
+            if (disable_controls)
+                ImGui::BeginDisabled(true);
+
+            ImGui::SetCursorPos(ImVec2((*screenW / 2) - 110, 150));
+            ImGui::InputText("## Contact Point", globals.contact_point, 45);
+            ImGui::SetItemTooltip("Cassandra Contact Point");
+
+            ImGui::SetCursorPos(ImVec2((*screenW / 2) - 110, 175));
+            ImGui::InputText("## Username", globals.cassandra_username, 45);
+            ImGui::SetItemTooltip("Cassandra Username");
+
+            ImGui::SetCursorPos(ImVec2((*screenW / 2) - 110, 200));
+            ImGui::InputText("## Password", globals.cassandra_password, 45);
+            ImGui::SetItemTooltip("Cassandra Password");
+
+            std::string contact_point;
             {
                 std::lock_guard<std::mutex> lock(contact_point_mutex);
-                captured_contact_point = globals.contact_point;
+                contact_point = globals.contact_point;
+            }
+            std::string username;
+            {
+                std::lock_guard<std::mutex> lock(cass_user_mutex);
+                username = globals.cassandra_username;
+            }
+            std::string password;
+            {
+                std::lock_guard<std::mutex> lock(cass_pass_mutex);
+                password = globals.cassandra_password;
             }
 
-            globals.connecting_to_db = true;
-            invalid_contact = true;
+            if (invalid_contact && !globals.field_unfilled)
+            {
+                ImGui::PushFont(globals.verdana);
+                ImGui::SetCursorPos(ImVec2((gui::GetTextCursorPosX(ImGui::GetWindowSize().x, globals.ContactPointErr)), 225));
+                ImGui::TextColored(ImVec4(1.0f, 0.f, 0.f, 1.f), globals.ContactPointErr);
+                ImGui::PopFont();
+            }
+            else if (globals.field_unfilled)
+            {
+                ImGui::PushFont(globals.verdana);
+                ImGui::SetCursorPos(ImVec2((gui::GetTextCursorPosX(ImGui::GetWindowSize().x, globals.NoContactPointErr)), 225));
+                ImGui::TextColored(ImVec4(1.0f, 0.f, 0.f, 1.f), globals.NoContactPointErr);
+                ImGui::PopFont();
+            }
 
-            std::thread([captured_contact_point]()
-                        {
-            gui::connect_to_db(captured_contact_point);
-            // gui::connect_to_db(captured_username, captured_password);
+            ImGui::SetCursorPos(ImVec2((*screenW / 2) - 130, 270));
+            if (ImGui::Button("Login", ImVec2(267, 40)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))
+            {
+                if (contact_point.empty())
+                    globals.field_unfilled = true;
+                else
+                    globals.field_unfilled = false;
+
+                globals.backArrowClicked = false;
+
+                globals.connecting_to_db = true;
+                invalid_contact = false;
+
+                std::thread([contact_point, username, password]()
+                            {
+            gui::connect_to_db_contact_point(contact_point, username, password);
             bool connected = gui::check_db_connection();
             if (connected) {
-                // *good_contact = true;
                 globals.login_loading = true;
                 globals.main_form = true;
                 globals.login_form = false;
             } else {
-                invalid_contact = false;
+                invalid_contact = true;
             }
             globals.connecting_to_db = false; })
-                .detach();
-        }
+                    .detach();
+            }
+            gui::ButtonHovered();
 
-        if (disable_controls)
-        {
-            ImGui::EndDisabled();
+            if (disable_controls)
+            {
+                ImGui::EndDisabled();
+            }
         }
     }
 
-    void main_page(int &logo_add, int &logo_pos, int *screenW, ImGuiStyle *style, bool &good_login)
+    void connect_page_datastax(float *screenW, ImGuiStyle *style)
+    {
+        gui::init_style();
+        if (globals.backArrowClicked)
+        {
+            gui::connect_method_quest(screenW, &ImGui::GetStyle());
+        }
+        else
+        {
+            // {
+            //     "clientId": "bDKOzuFUotSaTsdzKBmnlhJZ",
+            //     "secret": "7ZdYRrp14QvGCYP_G8aDhBolR9+ZPw8CNfZ+bzt7QZx2QThqZ3i+Ye1htPC04n1e97P1FnBqNNdvhOp6zNwWTRWWtZTAiDml6HI7DUgc0g061fFEvWJYJChYTRlM0Af.",
+            //     "token": "AstraCS:bDKOzuFUotSaTsdzKBmnlhJZ:2ba7b38a6ae80254657011658cf6767c8544ca96688a44a07d597fe6edb5e414"
+            // }
+            ImGui::SetCursorPos(ImVec2((*screenW / 2) - 10, 14));
+            ImGui::Image(globals.poof_logo, ImVec2(24, 24));
+
+            ImGui::SetCursorPos(ImVec2(10, 40));
+            ImGui::TextWrapped(globals.ContactPageTextDatastax);
+
+            ImGui::SetCursorPos(ImVec2(30, 10));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 0));
+            if (ImGui::ImageButton(globals.back_arrow, ImVec2(24, 24)))
+            {
+                std::cout << "Going back\n";
+                globals.backArrowClicked = true;
+            }
+            ImGui::PopStyleColor(3);
+            gui::ButtonHovered();
+
+            bool disable_controls = globals.connecting_to_db;
+            if (disable_controls)
+                ImGui::BeginDisabled(true);
+
+            ImGui::SetCursorPos(ImVec2(25, 150));
+            ImGui::InputTextMultiline("## Client ID", globals.datastax_client_id, IM_ARRAYSIZE(globals.datastax_client_id), ImVec2(300, ImGui::GetTextLineHeight() * 1.5));
+            ImGui::SetItemTooltip("Client ID");
+
+            ImGui::SetCursorPos(ImVec2(25, 175));
+            ImGui::InputTextMultiline("## Client Secret", globals.datastax_client_secret, IM_ARRAYSIZE(globals.datastax_client_secret), ImVec2(300, ImGui::GetTextLineHeight() * 1.5));
+            ImGui::SetItemTooltip("Client Secret");
+
+            ImGui::SetCursorPos(ImVec2(25, 200));
+            if (ImGui::Button(globals.FilePathBrowseText))
+            {
+                std::cout << "Opening File Dialog\n";
+                FileDialog::openFileDialog(nullptr, "../", 1, *globals.AllowedFiles, "zip files", 1);
+            }
+            ImGui::SetItemTooltip("Secure Connect Bundle File");
+            ImGui::SameLine();
+            if (globals.OpenedFileName != nullptr)
+                ImGui::TextWrapped("%s", globals.OpenedFileName);
+
+            std::string client_id;
+            {
+                std::lock_guard<std::mutex> lock(cass_client_id_mutex);
+                client_id = globals.datastax_client_id;
+            }
+            std::string client_secret;
+            {
+                std::lock_guard<std::mutex> lock(cass_client_secret_mutex);
+                client_secret = globals.datastax_client_secret;
+            }
+            std::string secure_path;
+            {
+                std::lock_guard<std::mutex> lock(cass_zip_path_mutex);
+                if (globals.OpenedFilePath != nullptr)
+                {
+                    secure_path = globals.OpenedFilePath;
+                    std::filesystem::path path(globals.OpenedFilePath);
+                    if (globals.OpenedFileName != nullptr)
+                        free(globals.OpenedFileName);
+
+                    globals.OpenedFileName = strdup(path.filename().string().c_str());
+                }
+            }
+
+            if (invalid_contact && !globals.field_unfilled)
+            {
+                ImGui::PushFont(globals.verdana);
+                ImGui::SetCursorPos(ImVec2((gui::GetTextCursorPosX(ImGui::GetWindowSize().x, globals.ContactPointErr)), 225));
+                ImGui::TextColored(ImVec4(1.0f, 0.f, 0.f, 1.f), globals.ContactPointErr);
+                ImGui::PopFont();
+            }
+            else if (globals.field_unfilled)
+            {
+                ImGui::PushFont(globals.verdana);
+                ImGui::SetCursorPos(ImVec2((gui::GetTextCursorPosX(ImGui::GetWindowSize().x, globals.CredsProvidedErr)), 225));
+                ImGui::TextColored(ImVec4(1.0f, 0.f, 0.f, 1.f), globals.CredsProvidedErr);
+                ImGui::PopFont();
+            }
+
+            ImGui::SetCursorPos(ImVec2((*screenW / 2) - 130, 270));
+            if (ImGui::Button("Login", ImVec2(267, 40)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))
+            {
+                if (secure_path.empty())
+                    globals.field_unfilled = true;
+                else
+                    globals.field_unfilled = false;
+
+                globals.backArrowClicked = false;
+
+                globals.connecting_to_db = true;
+                invalid_contact = false;
+
+                std::thread([client_id, client_secret, secure_path]()
+                            {
+            std::cout << client_id << std::endl;
+            std::cout << client_secret << std::endl;
+            gui::connect_to_db_datastax(client_id, client_secret, secure_path);
+            if(!globals.ConnectionErr) {
+            bool connected = gui::check_db_connection();
+            if (connected) {
+                globals.login_loading = true;
+                globals.main_form = true;
+                globals.login_form = false;
+            } else {
+                invalid_contact = true;
+            }
+            }
+            globals.connecting_to_db = false; })
+                    .detach();
+            }
+            gui::ButtonHovered();
+
+            if (disable_controls)
+            {
+                ImGui::EndDisabled();
+            }
+        }
+    }
+
+    void main_page(int &logo_add, int &logo_pos, float *screenW, ImGuiStyle *style, bool &good_login)
     {
         SDL_SetWindowSize(menu::sdl_window, globals.window_size.x, globals.window_size.y);
+        // 127.0.0.1
 
-        ImGui::SetCursorPos(ImVec2(30, 30));
+        ImGui::SetCursorPos(ImVec2(30, 10));
+        ImVec4 *colors = ImGui::GetStyle().Colors;
+        colors[ImGuiCol_Button] = ImVec4(0, 0, 0, 0);
+        colors[ImGuiCol_ButtonHovered] = ImVec4(0, 0, 0, 0);
+        colors[ImGuiCol_ButtonActive] = ImVec4(0, 0, 0, 0);
+        if (ImGui::ImageButton(globals.back_arrow, ImVec2(24, 24)))
+        {
+            std::cout << "Going back\n";
+            globals.logout_main_page = true;
+            globals.first_page = true;
+        }
+        gui::ButtonHovered();
+
+        ImGui::SetCursorPos(ImVec2(750, 14));
         menu::RoundedImage(globals.ham_button, ImVec2(24, 24), ImVec2(8, 8), 8, IM_COL32(0, 0, 0, 0), 255);
+        gui::ButtonHovered();
 
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         if (globals.showSideMenu)

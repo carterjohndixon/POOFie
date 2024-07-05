@@ -18,8 +18,9 @@ namespace db
     class db_handler
     {
     public:
-        db_handler(const char *contact_points);
-        // db_handler(const char *username, const char *password);
+        // db_handler(const char *contact_points);
+        db_handler(const char *contact_points, const char *username, const char *password);
+        db_handler(const char *client_id, const char *client_secret, const std::string *file_path);
         ~db_handler();
 
         bool is_connected();

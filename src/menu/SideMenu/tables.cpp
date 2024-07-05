@@ -5,11 +5,11 @@
 
 #include <iostream>
 
-void tables_page(int &logo_add, int &logo_pos, int *screenW, ImGuiStyle *style);
+void tables_page(int &logo_add, int &logo_pos, float *screenW, ImGuiStyle *style);
 
 namespace tables
 {
-    void tables_page(int &logo_add, int &logo_pos, int *screenW, ImGuiStyle *style)
+    void tables_page(int &logo_add, int &logo_pos, float *screenW, ImGuiStyle *style)
     {
         style->Colors[ImGuiCol_Text] = ImColor(171, 92, 255);
         ImGui::SetCursorPos(ImVec2((*screenW / 2) - 80, logo_pos));
